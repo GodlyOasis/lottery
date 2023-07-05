@@ -13,7 +13,7 @@ front_range = list(range(1, 36))
 back_range = list(range(1, 13))
 
 # 连接MySQL数据库
-db = pymysql.connect(host="localhost", user="root", password="258315", database="happyapp")
+db = pymysql.connect(host="localhost", user="root", password="11111", database="happyapp")
 # 创建游标对象
 cursor = db.cursor()
 
