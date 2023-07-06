@@ -1,11 +1,6 @@
-# 导入随机数模块
 import random
-# 导入时间模块
-import time
-# 导入MySQLdb模块
 import pymysql
-
-# 导入hashlib模块
+from datetime import datetime
 import hashlib
 
 # 定义前区和后区的范围
@@ -13,7 +8,7 @@ front_range = list(range(1, 36))
 back_range = list(range(1, 13))
 
 # 连接MySQL数据库
-db = pymysql.connect(host="localhost", user="root", password="11111", database="happyapp")
+db = pymysql.connect(host="localhost", user="root", password="258315", database="happyapp")
 # 创建游标对象
 cursor = db.cursor()
 
@@ -124,9 +119,9 @@ def generate_ticket_code(user_numbers):
     ticket_code = ""
     # 定义一个空字符串，用于存储用户号码
     user_number_str = ""
-    # 遍历用户号码列表，将每一注用户号码转换为字符串，并用分号分隔
+    # 遍历用户号码列表，将每一注用户号码转换为字符串，并用*号分隔
     for user_number in user_numbers:
-        user_number_str += ";".join(str(n) for n in user_number) + ";"
+        user_number_str += ";".join(str(n) for n in user_number) + "*"
     # 使用MD5算法对用户号码进行哈希，得到一个32位的十六进制字符串
     hash_str = hashlib.md5(user_number_str.encode()).hexdigest()
     # 从哈希字符串中随机选取8位作为彩票代码
@@ -162,11 +157,12 @@ def show_verify_page(lottery_number):
         if not result:
             raise ValueError("无效的彩票代码，请重新输入！")
         # 否则，将查询结果转换为整数列表的列表，并遍历每一注用户号码
-        user_numbers = [[int(n) for n in num.split(";") if n] for num in result[0].split(";;")]
+        user_numbers = [[int(n) for n in num.split(";") if n] for num in result[0].split("*")]
         for user_number in user_numbers:
             # 调用compare_number函数，比较用户号码和开奖号码，并打印出中奖等级
-            prize_level = compare_number(user_number, lottery_number)
-            print(f"你购买的号码{user_number}中奖等级为：{prize_level}")
+            if len(user_number) > 0:
+                prize_level = compare_number(user_number, lottery_number)
+                print(f"你购买的彩票：{user_number}------中奖等级：{prize_level}")
     except Exception as e:
         # 打印异常信息，并返回None
         print(e)
@@ -175,17 +171,19 @@ def show_verify_page(lottery_number):
 # 定义一个函数，用于显示起始页面，并获取用户选择的入口
 def show_start_page():
     # 打印欢迎信息和选择入口提示
-    print("欢迎来到模拟大乐透！")
-    print("请选择你要进入的入口：")
+    print('-' * 30)
+    print("欢迎来到大乐透！")
+    print("请选择功能：")
     print("1. 买彩票")
     print("2. 开奖")
     print("3. 退出系统")
+    print('-' * 30)
     # 使用try-except语句来处理用户输入的异常
     try:
         # 获取用户输入的入口，如果不是1或者2或者3，抛出异常
         entry = input("请输入1或者2或者3：")
         if entry not in ["1", "2", "3"]:
-            raise ValueError("输入错误，请重新输入！")
+            raise ValueError("输入错误，请重新输入1/2/3！")
         # 返回用户输入的入口
         return entry
     except Exception as e:
@@ -211,9 +209,13 @@ while continue_play:
     elif entry == "2":
         # 调用show_lottery_page函数，生成开奖号码，并打印出来
         lottery_number = show_lottery_page()
-        print("开奖号码为：", lottery_number)
         # 调用show_verify_page函数，获取用户输入的彩票代码和开奖号码，并比较中奖等级
         show_verify_page(lottery_number)
+        now = datetime.now()
+        year = now.strftime("%Y")
+        month = now.strftime("%m")
+        day = now.strftime("%d")
+        print("{}年{}月{}日，本期开奖号码为：{}".format(year, month, day, lottery_number))
     # 如果用户选择退出系统
     else:
         # 将循环变量设为False，结束循环
