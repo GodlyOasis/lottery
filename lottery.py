@@ -213,7 +213,7 @@ def show_verify_page(lottery_number):
                 else:
                     prize_count[int(prize_level[0])] += 1  # 提取数字部分
         # 定义一个列表，存储各个等级的奖金
-        prize_money = [0, 10000000, 1000000, 10000, 3000, 300, 200, 100, 15, 5]
+        prize_money = [0, 10000000, 5000000, 10000, 3000, 300, 200, 100, 15, 5]
         # 计算code旗下的所有彩票的奖金和
         bonus = sum(prize_count[i] * prize_money[i] for i in range(10))
         # 构造SQL语句，将彩票代码、未中奖个数、各个等级的中奖个数和奖金和插入到prize表中
