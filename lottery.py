@@ -3,6 +3,7 @@ import pymysql
 from datetime import datetime
 import hashlib
 
+
 # 定义前区和后区的范围
 front_range = list(range(1, 36))
 back_range = list(range(1, 13))
@@ -58,8 +59,10 @@ def compare_number(user_number, lottery_number):
     front_match = len(set(user_front) & set(lottery_front))
     back_match = len(set(user_back) & set(lottery_back))
     # 定义一个字典，存储中奖等级和对应的匹配个数
-    prize_dict = {"一等奖": (5, 2), "二等奖": (5, 1), "三等奖，奖金10000元": (5, 0), "四等奖，奖金3000元": (4, 2), "五等奖，奖金300元": (4, 1),
-                  "六等奖，奖金200元": (3, 2), "七等奖，奖金100元": (4, 0), "八等奖，奖金15元": ((3, 1), (2, 2)), "九等奖，奖金5元": ((3, 0), (1, 2), (2, 1), (0, 2))}
+    prize_dict = {"1": (5, 2), "2": (5, 1), "3": (5, 0), "4": (4, 2),
+                  "5": (4, 1),
+                  "6": (3, 2), "7": (4, 0), "8": ((3, 1), (2, 2)), "9":
+                      ((3, 0), (1, 2), (2, 1), (0, 2))}
     # 遍历字典，找到匹配个数对应的中奖等级，并返回一个字符串
     for prize_level, match in prize_dict.items():
         if (front_match, back_match) == match or (front_match, back_match) in match:
@@ -157,7 +160,7 @@ def generate_ticket_code(user_numbers):
     # 从哈希字符串中随机选取8位作为彩票代码
     ticket_code = "".join(random.sample(hash_str, 8))
     # 构造SQL语句，将彩票代码和用户号码插入到数据库中
-    sql = f"INSERT INTO tickets (code, number) VALUES ('{ticket_code}', '{user_number_str}')"
+    sql = f"INSERT INTO tickets (code, details, count) VALUES ('{ticket_code}', '{user_number_str}', {len(user_numbers)})"
     # 执行SQL语句，并提交到数据库
     cursor.execute(sql)
     db.commit()
@@ -178,8 +181,17 @@ def show_verify_page(lottery_number):
     ticket_code = input("请输入你的彩票代码：")
     # 使用try-except语句来处理用户输入的异常
     try:
-        # 构造SQL语句，从数据库中查询彩票代码对应的用户号码
-        sql = f"SELECT number FROM tickets WHERE code = '{ticket_code}'"
+        # 构造SQL语句，从数据库中查询彩票代码是否已经开奖
+        sql = f"SELECT * FROM prize WHERE code = '{ticket_code}'"
+        # 执行SQL语句，并获取查询结果
+        cursor.execute(sql)
+        result = cursor.fetchone()
+        # 如果查询结果不为空，说明该彩票已经开奖，提示用户并返回输入彩票代码页
+        if result:
+            print("该彩票已开奖！")
+            return show_verify_page(lottery_number)
+        # 否则，构造SQL语句，从数据库中查询彩票代码对应的用户号码
+        sql = f"SELECT details FROM tickets WHERE code = '{ticket_code}'"
         # 执行SQL语句，并获取查询结果
         cursor.execute(sql)
         result = cursor.fetchone()
@@ -188,11 +200,28 @@ def show_verify_page(lottery_number):
             raise ValueError("无效的彩票代码，请重新输入！")
         # 否则，将查询结果转换为整数列表的列表，并遍历每一注用户号码
         user_numbers = [[int(n) for n in num.split(",") if n] for num in result[0].split(";")]
+        # 定义一个列表，用于存储各个等级的中奖个数
+        prize_count = [0] * 10  # 0代表未中奖，1-9代表一到九等奖
         for user_number in user_numbers:
             # 调用compare_number函数，比较用户号码和开奖号码，并打印出中奖等级
             if len(user_number) > 0:
                 prize_level = compare_number(user_number, lottery_number)
-                print(f"彩票号码：{user_number}------中奖等级：{prize_level}")
+                print(f"彩票号码：{user_number},中奖等级：{prize_level}")
+                # 更新列表中对应的值
+                if prize_level == "未中奖":
+                    prize_count[0] += 1
+                else:
+                    prize_count[int(prize_level[0])] += 1  # 提取数字部分
+        # 定义一个列表，存储各个等级的奖金
+        prize_money = [0, 10000000, 1000000, 10000, 3000, 300, 200, 100, 15, 5]
+        # 计算code旗下的所有彩票的奖金和
+        bonus = sum(prize_count[i] * prize_money[i] for i in range(10))
+        # 构造SQL语句，将彩票代码、未中奖个数、各个等级的中奖个数和奖金和插入到prize表中
+        sql = f"INSERT INTO prize (code, noprize, prize1, prize2, prize3, prize4, prize5, prize6, prize7, prize8, " \
+              f"prize9, bonus, cost) VALUES ('{ticket_code}', {prize_count[0]}, {', '.join(str(n) for n in prize_count[1:])}, {bonus}, {(len(user_numbers) * 2) - 2}) "
+        # 执行SQL语句，并提交事务
+        cursor.execute(sql)
+        db.commit()
     except Exception as e:
         # 打印异常信息，并返回None
         print(e)
